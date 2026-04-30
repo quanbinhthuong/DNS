@@ -1,31 +1,56 @@
 --[[ 
-    📊 BÁO CÁO TIẾN ĐỘ BLOX FRUIT
+    📊 BÁO CÁO TIẾN ĐỘ BLOX FRUIT + KIỂM TRA AN TOÀN
     - Người thực hiện: Quân (quanbinhthuong)
-    - Giao diện: Chuẩn mẫu ảnh image_10011d.png
-    - Tính năng: Tự động chạy script Tumadam và gửi báo cáo Webhook sạch.
+    - Tính năng: Tự động chạy Tumadam, Check Mastery, Check Admin & Anti-Ban
 --]]
 
 local WebhookURL = "https://discord.com/api/webhooks/1434363905282412645/QM39tDfX8_b8Fudhg868GNMfVJXQtX6Cm7IRDui71q8-VnyNUDo3cMe2qxc1t5zrIFxq"
+local ScriptTumadam = "https://raw.githubusercontent.com/TumadamMod/cwertyur/refs/heads/main/TumadamEng.lua"
 
--- 1. TỰ ĐỘNG CHẠY SCRIPT TUMADAM (NHÚNG TRỰC TIẾP)
--- Mình sử dụng pcall để nếu script Tumadam có lỗi cũng không làm văng game của bạn
+-- 1. CHẠY SCRIPT TUMADAM NGẦM
 task.spawn(function()
-    local success, err = pcall(function()
-        -- Gọi mã nguồn Tumadam trực tiếp để script bắt đầu hoạt động ngay
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/TumadamMod/cwertyur/refs/heads/main/TumadamEng.lua"))()
+    pcall(function()
+        loadstring(game:HttpGet(ScriptTumadam))()
     end)
-    if not success then 
-        warn("Không thể khởi động Tumadam: " .. tostring(err)) 
-    end
 end)
 
--- 2. HỆ THỐNG BÁO CÁO WEBHOOK
+-- 2. HỆ THỐNG KIỂM TRA AN TOÀN (ANTI-KICK/BAN)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
-local lp = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 
--- Hàm lấy Mastery (Chỉ hiện nếu đang cầm vũ khí/trái trên tay)
+local function CheckSafety()
+    local status = "An Toàn ✅"
+    
+    -- Kiểm tra Admin trong Server
+    for _, v in pairs(Players:GetPlayers()) do
+        if v:GetRankInGroup(2830050) > 100 then 
+            status = "CẢNH BÁO: CÓ ADMIN! ⚠️"
+            break
+        end
+    end
+    
+    -- Kiểm tra các nỗ lực Kick/Ban (Logic giả lập bảo vệ)
+    local mt = getrawmetatable(game)
+    if mt then
+        setreadonly(mt, false)
+        local old = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" or method == "kick" then
+                status = "PHÁT HIỆN LỆNH KICK! 🚫 (Đã chặn)"
+                return nil
+            end
+            return old(self, ...)
+        end)
+    end
+    
+    return status
+end
+
+-- 3. HÀM LẤY MASTERY
 local function GetMasteryDisplay()
     local char = lp.Character
     if char then
@@ -40,17 +65,17 @@ local function GetMasteryDisplay()
     return ""
 end
 
--- Hàm gửi Webhook (Giao diện chuẩn y hệt ảnh image_10011d.png)
+-- 4. GỬI BÁO CÁO (Giao diện chuẩn image_10011d.png)
 local function SendProgressReport()
     local masteryText = GetMasteryDisplay()
-    local currentLevel = lp.Data.Level.Value
+    local safetyStatus = CheckSafety()
     
     local data = {
         ["content"] = "Người chơi: **" .. lp.Name .. "**",
         ["embeds"] = {{
             ["title"] = "📊 BÁO CÁO TIẾN ĐỘ BLOX FRUIT",
-            ["description"] = "🆙 **LEVEL UP!**\nBạn vừa tăng: **1** level.\nCấp độ mới: **" .. tostring(currentLevel) .. "**" .. masteryText .. "\n\nThời gian: **" .. os.date("%X") .. "**",
-            ["color"] = 3066993, -- Màu xanh lá cây đặc trưng
+            ["description"] = "🆙 **LEVEL UP!**\nBạn vừa tăng: **1** level.\nCấp độ mới: **" .. tostring(lp.Data.Level.Value) .. "**" .. masteryText .. "\n🛡️ **Tình trạng**: " .. safetyStatus .. "\n\nThời gian: **" .. os.date("%X") .. "**",
+            ["color"] = 3066993,
         }}
     }
 
@@ -67,5 +92,4 @@ local function SendProgressReport()
     end
 end
 
--- Gửi báo cáo ngay khi khởi chạy
 SendProgressReport()
