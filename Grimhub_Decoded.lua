@@ -1,6 +1,6 @@
 --[[
-    HOPSERVER HUB
-    Ưu tiên server 0 người hoặc 1 người
+    HOPSERVER HUB - Fixed for Delta + Steal an Egg
+    Ưu tiên server 0-1 người
 ]]
 
 local Players = game:GetService("Players")
@@ -8,16 +8,17 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlaceId = game.PlaceId
 
 -- Xóa GUI cũ
-if CoreGui:FindFirstChild("HopServerHub") then
-    CoreGui.HopServerHub:Destroy()
-end
+pcall(function()
+    if CoreGui:FindFirstChild("HopServerHub") then
+        CoreGui.HopServerHub:Destroy()
+    end
+end)
 
 -------------------------------------------------
 -- Tạo GUI
@@ -30,8 +31,8 @@ ScreenGui.Parent = CoreGui
 
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.new(0, 340, 0, 280)
-Main.Position = UDim2.new(0.5, -170, 0.5, -140)
+Main.Size = UDim2.new(0, 340, 0, 290)
+Main.Position = UDim2.new(0.5, -170, 0.5, -145)
 Main.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
@@ -44,24 +45,11 @@ Stroke.Color = Color3.fromRGB(70, 110, 255)
 Stroke.Thickness = 1.4
 Stroke.Transparency = 0.35
 
--- Shadow
-local Shadow = Instance.new("ImageLabel", Main)
-Shadow.Size = UDim2.new(1, 50, 1, 50)
-Shadow.Position = UDim2.new(0, -25, 0, -25)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://6014261993"
-Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.ImageTransparency = 0.55
-Shadow.ScaleType = Enum.ScaleType.Slice
-Shadow.SliceCenter = Rect.new(49, 49, 450, 450)
-Shadow.ZIndex = 0
-
 -- Title Bar
 local TitleBar = Instance.new("Frame", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 44)
 TitleBar.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
 TitleBar.BorderSizePixel = 0
-
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
 
 local TitleFix = Instance.new("Frame", TitleBar)
@@ -89,7 +77,6 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 20
 CloseBtn.TextColor3 = Color3.fromRGB(255, 110, 110)
 CloseBtn.AutoButtonColor = false
-
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
 
 -- Info
@@ -118,7 +105,7 @@ StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 -------------------------------------------------
 local function CreateButton(text, y, color)
     local btn = Instance.new("TextButton", Main)
-    btn.Size = UDim2.new(1, -32, 0, 40)
+    btn.Size = UDim2.new(1, -32, 0, 42)
     btn.Position = UDim2.new(0, 16, 0, y)
     btn.BackgroundColor3 = color
     btn.Text = text
@@ -126,29 +113,26 @@ local function CreateButton(text, y, color)
     btn.TextSize = 14
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.AutoButtonColor = false
-
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 9)
 
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.18), {
             BackgroundColor3 = Color3.new(
-                math.min(color.R + 0.08, 1),
-                math.min(color.G + 0.08, 1),
-                math.min(color.B + 0.08, 1)
+                math.min(color.R + 0.09, 1),
+                math.min(color.G + 0.09, 1),
+                math.min(color.B + 0.09, 1)
             )
         }):Play()
     end)
-
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.18), {BackgroundColor3 = color}):Play()
     end)
-
     return btn
 end
 
-local HopZeroBtn = CreateButton("HOP SERVER 0-1 NGƯỜI (Ưu tiên)", 112, Color3.fromRGB(45, 110, 255))
-local HopLowBtn  = CreateButton("HOP SERVER ÍT NGƯỜI NHẤT", 162, Color3.fromRGB(55, 60, 90))
-local RefreshBtn = CreateButton("Làm mới thông tin", 212, Color3.fromRGB(40, 45, 65))
+local HopZeroBtn = CreateButton("HOP SERVER 0-1 NGƯỜI (Ưu tiên)", 115, Color3.fromRGB(45, 110, 255))
+local HopLowBtn  = CreateButton("HOP SERVER ÍT NGƯỜI NHẤT", 167, Color3.fromRGB(55, 60, 90))
+local RefreshBtn = CreateButton("Làm mới thông tin", 219, Color3.fromRGB(40, 45, 65))
 
 -------------------------------------------------
 -- Kéo thả
@@ -185,11 +169,11 @@ end)
 -- Đóng & Toggle
 -------------------------------------------------
 CloseBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    TweenService:Create(Main, TweenInfo.new(0.2), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0)
     }):Play()
-    task.wait(0.22)
+    task.wait(0.2)
     ScreenGui:Destroy()
 end)
 
@@ -208,7 +192,7 @@ local function FetchServers()
     local cursor = ""
     local baseUrl = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
 
-    for i = 1, 8 do
+    for i = 1, 6 do
         local url = baseUrl
         if cursor ~= "" then
             url = url .. "&cursor=" .. cursor
@@ -223,7 +207,7 @@ local function FetchServers()
         end
 
         for _, server in pairs(data.data) do
-            if server.playing and server.maxPlayers and server.id ~= game.JobId then
+            if server.playing and server.maxPlayers and tostring(server.id) ~= tostring(game.JobId) then
                 if server.playing < server.maxPlayers then
                     table.insert(servers, server)
                 end
@@ -244,7 +228,6 @@ local function GetBestServer(preferEmpty)
     local servers = FetchServers()
     if #servers == 0 then return nil end
 
-    -- Ưu tiên 0 người hoặc 1 người
     if preferEmpty then
         local best = nil
         for _, s in pairs(servers) do
@@ -257,7 +240,6 @@ local function GetBestServer(preferEmpty)
         if best then return best end
     end
 
-    -- Nếu không có thì lấy ít người nhất
     table.sort(servers, function(a, b)
         return a.playing < b.playing
     end)
@@ -265,32 +247,38 @@ local function GetBestServer(preferEmpty)
     return servers[1]
 end
 
+-------------------------------------------------
+-- Teleport (đã sửa cho Delta + game thường)
+-------------------------------------------------
 local function TeleportToServer(server)
-    if not server then return false end
+    if not server or not server.id then
+        StatusLabel.Text = "Lỗi: Không có JobId"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
 
-    -- Ưu tiên dùng __ServerBrowser (Blox Fruits)
-    local ok = pcall(function()
-        local ServerBrowser = ReplicatedStorage:FindFirstChild("__ServerBrowser")
-        if ServerBrowser then
-            for i = 1, 4 do
-                task.spawn(function()
-                    pcall(function()
-                        ServerBrowser:InvokeServer("teleport", server.id)
-                    end)
-                end)
-            end
-            return true
-        end
-    end)
+    StatusLabel.Text = "Đang teleport tới server..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 80)
 
-    if ok then return true end
-
-    -- Fallback
-    pcall(function()
+    -- Cách 1: Cách chuẩn (hoạt động tốt trên Delta)
+    local success, err = pcall(function()
         TeleportService:TeleportToPlaceInstance(PlaceId, server.id, LocalPlayer)
     end)
 
-    return true
+    if success then
+        return
+    end
+
+    -- Cách 2: Thử lại không truyền LocalPlayer
+    pcall(function()
+        TeleportService:TeleportToPlaceInstance(PlaceId, server.id)
+    end)
+
+    -- Cách 3: Fallback
+    task.wait(0.5)
+    pcall(function()
+        TeleportService:Teleport(PlaceId, LocalPlayer)
+    end)
 end
 
 -------------------------------------------------
@@ -304,12 +292,12 @@ HopZeroBtn.MouseButton1Click:Connect(function()
         local server = GetBestServer(true)
 
         if server then
-            StatusLabel.Text = string.format("Tìm thấy: %d người → Đang hop...", server.playing)
+            StatusLabel.Text = "Tìm thấy: " .. server.playing .. " người → Đang hop..."
             StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 140)
-            task.wait(0.4)
+            task.wait(0.35)
             TeleportToServer(server)
         else
-            StatusLabel.Text = "Không tìm thấy server phù hợp"
+            StatusLabel.Text = "Không tìm thấy server 0-1 người"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
     end)
@@ -323,9 +311,9 @@ HopLowBtn.MouseButton1Click:Connect(function()
         local server = GetBestServer(false)
 
         if server then
-            StatusLabel.Text = string.format("Tìm thấy: %d người → Đang hop...", server.playing)
+            StatusLabel.Text = "Tìm thấy: " .. server.playing .. " người → Đang hop..."
             StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 140)
-            task.wait(0.4)
+            task.wait(0.35)
             TeleportToServer(server)
         else
             StatusLabel.Text = "Không tìm thấy server phù hợp"
@@ -347,8 +335,8 @@ Main.Size = UDim2.new(0, 0, 0, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
 
 TweenService:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 340, 0, 280),
-    Position = UDim2.new(0.5, -170, 0.5, -140)
+    Size = UDim2.new(0, 340, 0, 290),
+    Position = UDim2.new(0.5, -170, 0.5, -145)
 }):Play()
 
-print("✅ HOPSERVER HUB đã load thành công!")
+print("HOPSERVER HUB (Delta Fixed) đã load!")
